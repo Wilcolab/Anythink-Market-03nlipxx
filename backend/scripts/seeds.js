@@ -1,74 +1,52 @@
 
-const User = require('../models/User'); // Import your User model
-const Item = require('../models/Item'); // Import your Item model
-const Comment = require('../models/Comment'); // Import your Comment model
+const mongoose = require("mongoose");
+const connection = process.env.MONGODB_URI;
+mongoose.connect(connection);
+const User = mongoose.model("User");
+const Item = mongoose.model("Item");
+const Comment = mongoose.model("Comment");
+
 
 async function seedDatabase() {
-  try {
- 
-        for (let i = 0; i < 100; i++) {
-            const randomUsername = `user${i}`;
-            const randomEmail = `user${i}@example.com`;
-            const randomBio = `Bio for User ${i}`;
-            const randomImage = `profile-image-${i}.jpg`; 
-            const randomRole = 'user'; 
-            const randomFavorites = [];
-            const randomFollowing = []; 
-            const randomPassword = `password-${i}`; 
-      
-            const user = new User({
-              username: randomUsername,
-              email: randomEmail,
-              bio: randomBio,
-              image: randomImage,
-              role: randomRole,
-              favorites: randomFavorites,
-              following: randomFollowing,
-            });
-      
-            user.setPassword(randomPassword); 
-      
-            await user.save();
-          }
-
-    // Seed 100 items
     for (let i = 0; i < 100; i++) {
-        const randomTitle = `Item Title ${i}`;
-        const randomDescription = `Description for Item ${i}`;
-        const randomImage = `item-image-${i}.jpg`; // Replace with the image URL
-        const randomTags = ['tag1', 'tag2', 'tag3']; // Replace with actual tags if needed
-  
-        const item = new Item({
-          slug: '', // The slug will be generated automatically in the model's pre-validation hook
-          title: randomTitle,
-          description: randomDescription,
-          image: randomImage,
-          tagList: randomTags,
-          seller: 'replace-with-seller-user-id', // Replace with the actual seller's user ID
-        });
-  
-        await item.save();
+      // add user
+      const user = { username: = `user${i}`, email: `user${i}@gmail.com` };
+      const options = { upsert: true, new: true };
+      const createdUser = await User.findOneAndUpdate(user, {}, options);
+      
+      // add item to user
+      const item = {
+        slug: `slug${i}`,
+        title: `title ${i}`,
+        description: `description ${i}`,
+        seller: createdUser,
+      };
+      const createdItem = await Item.findOneAndUpdate(item, {}, options);
+      
+      // add comments to item
+      if (!createdItem?.comments?.length) {
+        let commentIds = [];
+        for (let j = 0; j < 100; j++) {
+          const comment = new Comment({
+            body: `body ${j}`,
+            seller: createdUser,
+            item: createdItem,
+          });
+          await comment.save();
+          commentIds.push(comment._id);
+        }
+        createdItem.comments = commentIds;
+        await createdItem.save();
       }
-
-    // Seed 100 comments
-    for (let i = 0; i < 100; i++) {
-        const randomBody = `Comment body ${i}`;
-        const randomSellerId = 'replace-with-seller-user-id'; // Replace with the actual seller's user ID
-        const randomItemId = 'replace-with-item-id'; // Replace with the actual item's ID
-  
-        const comment = new Comment({
-          body: randomBody,
-          seller: randomSellerId,
-          item: randomItemId,
-        });
-  
-        await comment.save();
-      }
-
-    console.log('Seeding completed.');
-  } catch (error) {
-    console.error('Error seeding the database:', error);
+    }
   }
-}
 
-seedDatabase();
+  seedDatabase()
+  .then(() => {
+  console.log("Finished DB seeding");
+  process.exit(0);
+})
+.catch((err) => {
+  console.log(`Error while running DB seed: ${err.message}`);
+  process.exit(1);
+});
