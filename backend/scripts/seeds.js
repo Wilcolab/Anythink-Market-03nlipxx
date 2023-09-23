@@ -68,8 +68,6 @@ async function seedDatabase() {
     console.log('Seeding completed.');
   } catch (error) {
     console.error('Error seeding the database:', error);
-  } finally {
-    mongoose.disconnect();
   }
 }
 
